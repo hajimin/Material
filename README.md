@@ -4,7 +4,8 @@
 ##### [Dubai Oil, PVC, Silver(CMDT_SI), 주석(CMDT_SDY), 환율, 저유황유(VLSFO)]
 ### 추가 요청 [아연도(GI), 알루미늄(AI)]
 
-
+.
+.
 
 (1) 네이버 증권
 Dubai Oil, PVC, Silver, 환율 정보 존재
