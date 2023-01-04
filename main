@@ -1,0 +1,40 @@
+import os
+import pandas as pd
+import price
+import sqlalchemy
+
+os.chdir('디렉토리 위치')
+
+dir_path = os.getcwd()                                          # 기본 디렉토리 경로
+def get_files_count(folder_path):
+    dirListing = os.listdir(folder_path)
+    return len(dirListing)
+
+
+if get_files_count(dir_path) < 1:
+    oil_price_du = price.get_init_price('OIL_DU')               # 두바이유 가격정보 일괄 가져오기
+    sv_price_du = price.get_init_price('CMDT_SI')               # 은 가격정보 일괄 가져오기
+    cm_price_du = price.get_init_price('CMDT_SDY')              # 주석 가격정보 일괄 가져오기
+    fx_usdkrw_du = price.get_init_price('FX_USDKRW')            # 환율 가격정보 일괄 가져오기
+    total = pd.concat([oil_price_du, sv_price_du,cm_price_du,fx_usdkrw_du], ignore_index=True)
+
+    oil_price_du.to_csv('OIL_DU.csv', encoding='utf-8-sig')                           # 두바이유 가격정보 to_csv
+    sv_price_du.to_csv('CMDT_SI.csv', encoding='utf-8-sig')                           # 은 가격정보 to_csv
+    cm_price_du.to_csv('CMDT_SDY.csv', encoding='utf-8-sig')                          # 주석 가격정보 to_csv
+    fx_usdkrw_du.to_csv('FX_USDKRW.csv', encoding='utf-8-sig')                        # 환율 가격정보 to_csv
+    total.to_excel('total.xlsx')
+
+else :
+    oil_price_du = price.get_daily_price('OIL_DU')              # 두바이유 최신가격정보 증분 가져오기
+    sv_price_du = price.get_daily_price('CMDT_SI')              # 은 최신가격정보 증분 가져오기
+    cm_price_du = price.get_daily_price('CMDT_SDY')             # 주석 최신가격정보 증분 가져오기
+    fx_usdkrw_du = price.get_daily_price('FX_USDKRW')            # 환율 최신가격정보 증분 가져오기
+    total = pd.concat([oil_price_du, sv_price_du, cm_price_du,fx_usdkrw_du], ignore_index=True)
+    engine = sqlalchemy.create_engine("oracle://EIS_ADMIN:kcc3480!@70.90.10.209:1558/DEV1")
+    total.to_sql('price_material', con=engine, if_exists='append', chunksize=1000, index=False)
+
+    oil_price_du.to_csv('OIL_DU.csv', encoding='utf-8-sig')
+    sv_price_du.to_csv('CMDT_SI.csv', encoding='utf-8-sig')
+    cm_price_du.to_csv('CMDT_SDY.csv', encoding='utf-8-sig')
+    fx_usdkrw_du.to_csv('FX_USDKRW.csv', encoding='utf-8-sig')
+    total.to_excel('total.xlsx')
