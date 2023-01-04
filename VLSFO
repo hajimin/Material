@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
-
+import numpy as np
 os.chdir('C:/Commodity/')
 
 def get_init_price():
@@ -61,24 +61,20 @@ def get_init_price():
     # 오늘 날짜 기준 년도 가져오기
     date_year = datetime.date.today().year
 
-    month=item['date1']
     # Dec 를 datetime으로 변경 후 월만 추출
-    # item['date1'] = list([pd.to_datetime(month, format='%b') for x in item['date1'].to_list()])
+
+    item['year']=int(date_year)
+    item['year']= np.where(item['date1']=='Dec',item.year-1,item.year)
+
     item['date1'] = pd.to_datetime(item['date1'], format='%b')
-    # item['date1']=str(item['date1'])
-    item['date1'] = item['date1'].dt.month
+
+    item['date1'] = item['date1'].dt.month.astype(str)
     # item['date1'] = str(item['date1']).split('-')[1]
 
     item['code']='VLSFO'
 
-    item['year']=str(date_year)
-    if str(item.date1) == '12':
-        item['year']=str(int(item.year)-1)
-    else:
-        item['year']=item.year
-
     # 년 + 월 + 일 합쳐 문자열-> datetime 변경 (이때, 초단위까지 나오므로 문자열로 한번더 type변경)
-    item['date']=item['year']+'-'+str(item['date1'])+'-'+item['date2']
+    item['date']=item.year.astype(str)+'-'+item['date1'].astype(str)+'-'+item['date2'].astype(str)
     item['date']=pd.to_datetime(item['date'], format='%Y-%m-%d')
 
     # test 위해 date3으로 했는데, 그냥 date로 해도 무방하다고 생각됩니다
@@ -89,8 +85,9 @@ def get_init_price():
 
     import sqlalchemy
 
-    engine = sqlalchemy.create_engine("oracle://ID:PW@IP:PORT")
-    final.to_sql('TableName', con=engine, if_exists='append', chunksize=1000, index=False)
+    engine = sqlalchemy.create_engine("oracle://EIS_ADMIN:kcc3480!@70.90.10.209:1558/DEV1")
+    final.to_sql('PRICE_MATERIAL', con=engine, if_exists='append', chunksize=1000, index=False)
+    print(final)
 
     return final
 
