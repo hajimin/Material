@@ -1,7 +1,7 @@
 # 원자재 크롤링
 
-현업요청 -> 원자재 시세 대시보드 
-[Dubai Oil, PVC, Silver(CMDT_SI), 주석(CMDT_SDY), 환율, 저유황유(VLSFO)]
+## 현업요청 -> 원자재 시세 대시보드 
+## [Dubai Oil, PVC, Silver(CMDT_SI), 주석(CMDT_SDY), 환율, 저유황유(VLSFO)]
 
 추가 요청
 [아연도(GI), 알루미늄(AI)]
