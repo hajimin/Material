@@ -85,8 +85,8 @@ def get_init_price():
 
     import sqlalchemy
 
-    engine = sqlalchemy.create_engine("oracle://EIS_ADMIN:kcc3480!@70.90.10.209:1558/DEV1")
-    final.to_sql('PRICE_MATERIAL', con=engine, if_exists='append', chunksize=1000, index=False)
+    engine = sqlalchemy.create_engine("oracle://ID:PW@IP:PORT")
+    final.to_sql('TableName', con=engine, if_exists='append', chunksize=1000, index=False)
     print(final)
 
     return final
