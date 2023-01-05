@@ -1,0 +1,46 @@
+import pandas as pd
+import xlrd
+
+MERGE_URL = ('~/merge/')
+class file_concat:
+    def load_data(fileName):
+        # 크롤링 데이터
+        CSV_URL = ('~/csv/')
+        # 현업 관리 데이터 
+        EXCEL_URL = ('~/excel/')
+        csv_data = pd.read_csv(CSV_URL+fileName+'.csv')
+        csv_data=csv_data[['DATE_IDX','CODE','PRICE']]
+        excel_data = pd.read_csv(EXCEL_URL+fileName+'.csv')
+
+        csv_data['DATE_IDX'].sort_values()
+        excel_data['DATE_IDX'].sort_values()
+        df = pd.concat([csv_data, excel_data])
+        dup=df.drop_duplicates(['DATE_IDX', 'CODE'], keep='last')
+        dup= dup.sort_values(by=['DATE_IDX'],axis=0,ascending=False)
+        dup = dup.reset_index()
+        dup = dup.drop(labels='index',axis=1)
+
+        dup = excel_data[['DATE_IDX','CODE','PRICE']]
+        import sqlalchemy
+
+        engine = sqlalchemy.create_engine("oracle://EIS_ADMIN:kcc3480!@70.90.10.209:1558/DEV1")
+
+        #  DB table primary key(DATE_IDX, CODE)   가정
+        for i in range(len(dup)):
+            try:
+                dup.iloc[i:i + 1].to_sql('PRICE_MATERIAL', con=engine, if_exists='append', chunksize=1000, index=False)
+            except :
+                pass
+
+        return dup
+
+FX_USDKRW = file_concat.load_data('FX_USDKRW')
+PVC = file_concat.load_data('PVC')
+VLSFO = file_concat.load_data('VLSFO')
+
+# FX_USDKRW.to_csv(MERGE_URL+'FX_USDKRW.csv')
+# PVC.to_csv(MERGE_URL+'PVC.csv')
+# VLSFO.to_csv(MERGE_URL+'VLSFO.csv')
+
+# 사용안하는 원자재 list [OIL_DU, CMDT_SI, CMDT_SDY]
+
