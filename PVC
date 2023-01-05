@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 
+import sqlalchemy
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -24,8 +25,8 @@ def get_pvc(code):
     website = 'https://www.cischem.com/'
     driver.get(website)
 
-    id = 'kccpd'
-    pw = 'qweasd'
+    id = 'id'
+    pw = 'pw'
 
     # frame 접근
     frame = driver.find_element_by_xpath('/html/frameset/frame')
@@ -55,30 +56,32 @@ def get_pvc(code):
     # 인덱스 숨기기
     # price.style.hide_index()
 
-    price.columns = ['DATE', 'CODE', 'Korea']
+    price.columns = ['DATE_IDX', 'CODE', 'Korea']
 
     price['MIN'] = price.Korea.str.split('-').str[0].astype('int')
     price['MAX'] = price.Korea.str.split('-').str[1].astype('int')
     # 평균
     price['PRICE'] = ((price['MIN'] + price['MAX']) / 2).astype('int')
-    price = price[['DATE', 'CODE', 'PRICE']]
+    price = price[['DATE_IDX', 'CODE', 'PRICE']]
     # 차분
-    price['COMPARED'] = price.PRICE.diff(-1)
+    # price['COMPARED'] = price.PRICE.diff(-1)
 
     end_time = datetime.now()
     print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
                                                                           (end_time - start_time).seconds,
                                                                           len(price)))
-    # 매일 업데이트
+    
     return price
 
 PVC_price = get_pvc('PVC')
-# PVC_price.to_excel('pvc.xlsx')
 
-import sqlalchemy
 
 engine = sqlalchemy.create_engine("oracle://ID:PW@IP:PORT")
 
-PVC_price.to_sql('TableName', con=engine, if_exists='append', chunksize=1000, index=False)
-
-# print(PVC_price)
+for i in range(len(PVC_price)):
+    try:
+        PVC_price.to_sql('TableName', con=engine, if_exists='append', chunksize=1000, index=False)
+    except:
+        pass
+    
+# 매일 실행 - 리눅스 
