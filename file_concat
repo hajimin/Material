@@ -6,7 +6,7 @@ class file_concat:
     def load_data(fileName):
         # 크롤링 데이터
         CSV_URL = ('~/csv/')
-        # 현업 관리 데이터 
+        # 현업 수기 관리 데이터 
         EXCEL_URL = ('~/excel/')
         csv_data = pd.read_csv(CSV_URL+fileName+'.csv')
         csv_data=csv_data[['DATE_IDX','CODE','PRICE']]
