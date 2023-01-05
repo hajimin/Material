@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import price
-import sqlalchemy
 
 os.chdir('디렉토리 위치')
 
