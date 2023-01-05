@@ -79,10 +79,14 @@ def get_daily_price(code):
     else:  # 두바이유(OIL_DU), 은(CMDT_SI), 주석(CMDT_SDY)
         url = 'https://finance.naver.com/marketindex/worldDailyQuote.nhn?marketindexCd={}&fdtc=2&page={}'.format(code,page)
         data = pd.read_html(url)[0].dropna()
-    new_date_data = data.loc[[0]]                                               # 최신 일자 데이터
+    new_date_data = data.loc[1:]                                                # 최신 일자 데이터
     new_date = data.iloc[0,0]                                                   # 날짜 비교를 위한 new_date
+    new_date = new_date.replace('.','-')
+    date_time_obj = datetime.strptime(new_date, '%Y-%m-%d')
+
     csv_data = pd.read_csv(code + '.csv', index_col=0, encoding='utf-8')        # 머리글은 제외하고 기존 데이터 read
-    csv_max_date =csv_data.max()[1]                                             # 날짜 비교를 위한 기존 csv_max_date
+    csv_max_date =csv_data.max()[1][:10]                                        # 날짜 비교를 위한 기존 csv_max_date
+    csv_data['DATE'] = csv_data['DATE'].apply(lambda x: x[:10])
     if re.sub('[^0-9]', '', new_date) > re.sub('[^0-9]', '', csv_max_date) :    # new_date 가 csv_max_date 보다 클 경우 병합
         newData.append(new_date_data)                                           # 신규 데이터 list 형태로 만들어줌
         price = pd.concat(newData).reset_index(drop=True)
@@ -97,12 +101,12 @@ def get_daily_price(code):
             price.columns = ['DATE', 'CODE', 'PRICE', 'COMPARED']
         price['DATE'] = price['DATE'].apply(lambda x: datetime.strptime(x, '%Y.%m.%d'))
         price['DATE'] = price['DATE'].astype(str)                                # 불러온 csv 의 날짜는 타입이 문자열이라 동일하게 맞춰줌
-        price = price[['DATE', 'PRICE', 'COMPARED']]                                # 기존 데이터 컬럼과 동일하게 추출
-        price.insert(0, 'CODE', code)                                            # 기존 데이터와 동일하게 하기 위함
-        result = pd.concat([price, csv_data]).reset_index(drop=True)            # 신규 + 기존 데이터 처리 후 index 초기화
+        price = price[['DATE', 'PRICE', 'COMPARED']]                             # 기존 데이터 컬럼과 동일하게 추출
+        price['CODE'] = code                                                     # 기존 데이터와 동일하게 하기 위함
+        result = pd.concat([price, csv_data]).reset_index(drop=True)             # 신규 + 기존 데이터 처리 후 index 초기화
         print(result)
     else:
-        result = csv_data                                                       # 기존 데이터 그대로 저장
+        result = csv_data                                                        # 기존 데이터 그대로 저장
     time.sleep(delay)
     end_time = datetime.now()
     print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
