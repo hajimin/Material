@@ -18,11 +18,7 @@ if get_files_count(dir_path) < 1:
     fx_usdkrw_du = price.get_init_price('FX_USDKRW')            # 환율 가격정보 일괄 가져오기
     total = pd.concat([oil_price_du, sv_price_du,cm_price_du,fx_usdkrw_du], ignore_index=True)
 
-    oil_price_du.to_csv('OIL_DU.csv', encoding='utf-8-sig')                           # 두바이유 가격정보 to_csv
-    sv_price_du.to_csv('CMDT_SI.csv', encoding='utf-8-sig')                           # 은 가격정보 to_csv
-    cm_price_du.to_csv('CMDT_SDY.csv', encoding='utf-8-sig')                          # 주석 가격정보 to_csv
-    fx_usdkrw_du.to_csv('FX_USDKRW.csv', encoding='utf-8-sig')                        # 환율 가격정보 to_csv
-    total.to_excel('total.xlsx')
+    #total.to_csv('total.csv', encoding='utf-8-sig')
 
 else :
     oil_price_du = price.get_daily_price('OIL_DU')              # 두바이유 최신가격정보 증분 가져오기
@@ -30,11 +26,5 @@ else :
     cm_price_du = price.get_daily_price('CMDT_SDY')             # 주석 최신가격정보 증분 가져오기
     fx_usdkrw_du = price.get_daily_price('FX_USDKRW')            # 환율 최신가격정보 증분 가져오기
     total = pd.concat([oil_price_du, sv_price_du, cm_price_du,fx_usdkrw_du], ignore_index=True)
-    engine = sqlalchemy.create_engine("oracle://ID:PW@IP:PORT")
-    total.to_sql('TableName', con=engine, if_exists='append', chunksize=1000, index=False)
 
-    oil_price_du.to_csv('OIL_DU.csv', encoding='utf-8-sig')
-    sv_price_du.to_csv('CMDT_SI.csv', encoding='utf-8-sig')
-    cm_price_du.to_csv('CMDT_SDY.csv', encoding='utf-8-sig')
-    fx_usdkrw_du.to_csv('FX_USDKRW.csv', encoding='utf-8-sig')
-    total.to_excel('total.xlsx')
+    #total.to_csv('total.csv', encoding='utf-8-sig')
