@@ -30,8 +30,8 @@ else :
     cm_price_du = price.get_daily_price('CMDT_SDY')             # 주석 최신가격정보 증분 가져오기
     fx_usdkrw_du = price.get_daily_price('FX_USDKRW')            # 환율 최신가격정보 증분 가져오기
     total = pd.concat([oil_price_du, sv_price_du, cm_price_du,fx_usdkrw_du], ignore_index=True)
-    engine = sqlalchemy.create_engine("oracle://EIS_ADMIN:kcc3480!@70.90.10.209:1558/DEV1")
-    total.to_sql('price_material', con=engine, if_exists='append', chunksize=1000, index=False)
+    engine = sqlalchemy.create_engine("oracle://ID:PW@IP:PORT")
+    total.to_sql('TableName', con=engine, if_exists='append', chunksize=1000, index=False)
 
     oil_price_du.to_csv('OIL_DU.csv', encoding='utf-8-sig')
     sv_price_du.to_csv('CMDT_SI.csv', encoding='utf-8-sig')
