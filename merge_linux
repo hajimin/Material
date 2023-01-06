@@ -1,0 +1,63 @@
+
+import pandas as pd
+import xlrd
+import numpy
+import cx_Oracle
+import datetime
+import sqlalchemy
+import pandas as pd
+
+# MERGE 파일
+EXCEL_URL = ('csvfolder')
+MERGE_URL = ('mergefolder')
+def load_data(csvName,excelName):
+    # 크롤링
+    CSV_URL = ('csvfolder')
+    # 현업
+    EXCEL_URL = ('excelfolder')
+    # crawling file load
+    csv_data = pd.read_csv(CSV_URL+csvName+'.csv')
+    csv_data=csv_data[['DATE','CODE','PRICE']]
+    # 현업 file load
+    excel_data = pd.read_csv(EXCEL_URL+excelName+'.csv')
+    # 각 파일 DATE 정렬
+    csv_data['DATE'].sort_values()
+    excel_data['DATE'].sort_values()
+    df = pd.concat([csv_data, excel_data])
+    dup=df.drop_duplicates(['DATE', 'CODE'], keep='last')
+    # DATE 기준 재정렬
+    dup= dup.sort_values(by=['DATE'],axis=0,ascending=False)
+    # reset 후 기존 인덱스삭제
+    dup = dup.reset_index()
+    dup = dup.drop(labels='index',axis=1)
+    return dup
+# test
+# CMDT_SDY = load_data('CMDT_SDY')
+FX_USDKRW = load_data('FX_USDKRW','USER_EXCHANGE_RATE')
+PVC = load_data('PVC','USER_PVC')
+VLSFO = load_data('VLSFO','USER_VLSFO')
+SODA = pd.read_csv(EXCEL_URL+'USER_SODA_ASH'+'.csv', encoding='utf-8')
+# GI = load_data('GI')
+# AI = load_data('AI')
+
+
+
+FX_USDKRW.to_csv(MERGE_URL+'FINAL_EX_RATE.csv')
+PVC.to_csv(MERGE_URL+'FINAL_PVC.csv')
+VLSFO.to_csv(MERGE_URL+'FINAL_VLSFO.csv')
+
+total = pd.concat([FX_USDKRW, PVC, VLSFO,SODA], ignore_index=True)  # 환율 , pvc , 저유황유만
+total['UPDATE_DATETIME'] = datetime.datetime.today()
+
+engine = sqlalchemy.create_engine("ID:PW@IP:PORT")
+
+try :
+    total.to_sql('TableName', con=engine, if_exists='replace', chunksize=1000, index=False, dtype={'DATE':sqlalchemy.types.VARCHAR(15), 'CODE':sqlalchemy.types.VARCHAR(15), 'PRICE': sqlalchemy.types.Float, 'UPDATE_DATETIME':sqlalchemy.types.DateTime})
+except :
+    with engine.connect() as conn:
+        sql ="drop table TableName"
+        res = conn.execute(sql)
+    total.to_sql('TableName', con=engine, if_exists='replace', chunksize=1000, index=False, dtype={'DATE':sqlalchemy.types.VARCHAR(15), 'CODE':sqlalchemy.types.VARCHAR(15), 'PRICE': sqlalchemy.types.Float, 'UPDATE_DATETIME':sqlalchemy.DATETIME})
+
+print('merging flies finished')
+# 사용안하는 원자재 list [OIL_DU, CMDT_SI, CMDT_SDY]
