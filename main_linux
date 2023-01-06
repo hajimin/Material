@@ -1,0 +1,75 @@
+import os
+import pandas as pd
+import price
+import pvc
+import vlsfo
+import steeldaily
+
+#os.chdir('D:/data/')
+#os.chdir('//70.90.10.213/AzureUpload/data/')
+os.chdir('/home/batch/csvfile/')
+dir_path = os.getcwd()                                          # 기본 디렉토리 경로
+
+
+def get_files_count(folder_path,code):
+    dirListing = os.listdir(folder_path)
+    result = 0
+    for fileName in dirListing:
+        if fileName == code+".csv":
+            result = 1
+
+    return result
+
+if get_files_count(dir_path,'OIL_DU') == 0:
+    oil_price_du = price.get_init_price('OIL_DU')  # 두바이유 가격정보 일괄 가져오기
+else :
+    oil_price_du = price.get_daily_price('OIL_DU')  # 두바이유 최신가격정보 증분 가져오기
+
+if get_files_count(dir_path, 'CMDT_SI') == 0:
+    sv_price_du = price.get_init_price('CMDT_SI')  # 은 가격정보 일괄 가져오기
+else :
+    sv_price_du = price.get_daily_price('CMDT_SI')  # 은 최신가격정보 증분 가져오기
+
+if get_files_count(dir_path, 'CMDT_SDY') == 0:
+    cm_price_du = price.get_init_price('CMDT_SDY')  # 주석 가격정보 일괄 가져오기
+else :
+    cm_price_du = price.get_daily_price('CMDT_SDY')  # 주석 최신가격정보 증분 가져오기
+
+if get_files_count(dir_path, 'FX_USDKRW') == 0:
+    fx_usdkrw_du = price.get_init_price('FX_USDKRW')  # 두바이유 가격정보 일괄 가져오기
+else :
+    fx_usdkrw_du = price.get_daily_price('FX_USDKRW')  # 두바이유 최신가격정보 증분 가져오기
+
+
+if get_files_count(dir_path, 'VLSFO') == 0:
+    vlsfo_du = vlsfo.get_init_price('VLSFO')  # 저유황유 가격정보 일괄 가져오기
+else :
+    vlsfo_du = vlsfo.get_daily_price('VLSFO')  # 저유황유최신가격정보 증분 가져오기
+
+if get_files_count(dir_path, 'PVC') == 0:
+    pvc_du = pvc.get_init_price('PVC')  # pvc 가격정보 일괄 가져오기
+else :
+    pvc_du = pvc.get_daily_price('PVC')  # pvc 최신가격정보 증분 가져오기
+
+if get_files_count(dir_path, 'GI') == 0:
+    gi_du = steeldaily.get_init_price('GI') # GI 가격정보 일괄 가져오기
+else :
+    gi_du = steeldaily.get_daily_price('GI') # GI 최신가격정보 증분 가져오기
+
+if get_files_count(dir_path, 'AI') == 0:
+    ai_du = steeldaily.get_init_price('AI') # AI 가격정보 일괄 가져오기
+else :
+    ai_du = steeldaily.get_daily_price('AI') # AI 최신가격정보 증분 가져오기
+
+
+
+
+oil_price_du.to_csv('OIL_DU.csv', encoding='utf-8-sig')                           # 두바이유 가격정보 to_csv
+sv_price_du.to_csv('CMDT_SI.csv', encoding='utf-8-sig')                           # 은 가격정보 to_csv
+cm_price_du.to_csv('CMDT_SDY.csv', encoding='utf-8-sig')                          # 주석 가격정보 to_csv
+fx_usdkrw_du.to_csv('FX_USDKRW.csv', encoding='utf-8-sig')                        # 환율 가격정보 to_csv
+pvc_du.to_csv('PVC.csv', encoding='utf-8-sig')                                    # PVC 가격정보 to_csv
+vlsfo_du.to_csv('VLSFO.csv', encoding='utf-8-sig')                                # 저유황유 가격정보 to_csv
+gi_du.to_csv(dir_path+'gi.csv', encoding='utf-8-sig')                             # 아연 가격 정보 to_csv
+ai_du.to_csv('ai.csv', encoding='utf-8-sig')                                      #  알루미늄 가격정보 to_csv
+
