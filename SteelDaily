@@ -1,0 +1,220 @@
+import os
+import time
+import re
+
+import numpy as np
+import pandas as pd
+from datetime import datetime
+
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+os.chdir('디렉토리 위치')
+
+def get_init_price(code):
+    delay = 0.01
+    page = 1
+    result = []
+    flag = 0
+    start_time = datetime.now()
+
+    driver = webdriver.Chrome(ChromeDriverManager().install())
+
+    website = 'https://www.steeldaily.co.kr/member/login.html'
+    driver.get(website)
+
+    id = 'id '
+    pw = 'pw'
+
+    elem = driver.find_element(By.XPATH, '//*[@id="user_id"]')
+    elem.send_keys(id)
+
+    elem = driver.find_element(By.XPATH, '//*[@id="user_pw"]')
+    elem.send_keys(pw)
+
+
+    elem = driver.find_element(By.XPATH, '//*[@id="loginForm"]/button')
+    elem.click()
+    time.sleep(5)
+
+    try:
+        alert = driver.switch_to_alert()
+        alert.accept()
+
+    except Exception as e:
+        print('경고창 미종료 에러')
+
+
+    driver.get('https://www.steeldaily.co.kr/dbcenter/')
+    time.sleep(4)
+
+
+    content = driver.find_element_by_xpath('//*[@id="db-center-wrap"]/iframe')
+    driver.switch_to.frame(content)
+    
+    if code == 'GI':                                                 
+      flag = 0
+    else :                                                                  
+      flag = 1
+
+    print('[{}] 데이터 수집 시작 (code: {})'.format(start_time.strftime('%Y/%m/%d %H:%M:%S'), code))
+
+    while (True):
+        if flag == 0:  
+            WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="page-main"]/div/div/div/div/div[1]/div[1]/ul/li[5]/a'))).click()
+            time.sleep(4)
+            url = 'https://steeldaily1.cafe24.com/front/db?id=6&gs=&date_start=&date_end=&login=true&page={}'.format(page)
+            driver.get(url)
+            data=pd.read_html(driver.find_element(By.XPATH,'//*[@id="print-box"]/table').get_attribute('outerHTML'),header=0)[0]
+            # data=pd.read_html(driver.find_element(By.XPATH,'//*[@id="print-box"]/table').get_attribute('outerHTML'),header=0)[0]
+        else:
+            WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH,'//*[@id="page-main"]/div/div/div/div/div[1]/div[10]/ul/li[2]/a'))).click()
+            time.sleep(4)
+            url = 'https://steeldaily1.cafe24.com/front/db?id=50&gs=&date_start=&date_end=&login=true&page={}'.format(page)
+            driver.get(url)
+            data=pd.read_html(driver.find_element(By.XPATH,'//*[@id="print-box"]/table').get_attribute('outerHTML'),header=0)[0]
+
+        if page != 1:
+            try:
+                if data.iloc[-1, 0] == result[-1].iloc[-1, 0]:
+                    break
+            except:
+                break
+        result.append(data)
+        page += 1
+        time.sleep(delay)
+
+    price = pd.concat(result).reset_index(drop=True)
+    if flag== 0: 
+        price.columns = ['DATE', 'PRICE', 'COMPARED']
+    else : 
+        price.columns = ['DATE', 'PRICE', 'COMPARED','ETC']
+    price['PRICE']=price['PRICE'].apply(lambda x: x[:5])
+    price['PRICE']=price['PRICE'].apply(lambda x:re.sub(r"[^0-9]", "", x))
+    price['CODE']=code
+    price = price[['DATE', 'CODE','PRICE']]
+    
+    return price
+    
+    
+    
+def get_daily_price(code):
+    newData = []
+    start_time = datetime.now()
+
+    delay = 0.01
+    page = 1
+    result = []
+    flag = 0
+    start_time = datetime.now()
+
+    print('[{}] 데이터 수집 시작 (code: {})'.format(start_time.strftime('%Y/%m/%d %H:%M:%S'), code))
+
+    path='/usr/bin/chromedriver'     # 구글 드라이버 설치 경로 지정
+
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+
+    driver = webdriver.Chrome(executable_path = path, chrome_options=chrome_options)
+
+    website = 'https://www.steeldaily.co.kr/member/login.html'
+    driver.get(website)
+
+    id = 'charls12 '
+    pw = 'jsst3047'
+
+    elem = driver.find_element(By.XPATH, '//*[@id="user_id"]')
+    elem.send_keys(id)
+
+    elem = driver.find_element(By.XPATH, '//*[@id="user_pw"]')
+    elem.send_keys(pw)
+
+    elem = driver.find_element(By.XPATH, '//*[@id="loginForm"]/button')
+    elem.click()
+    time.sleep(5)
+
+    try:
+        alert = driver.switch_to_alert()
+        alert.accept()
+
+    except Exception as e:
+        print('경고창 미종료 에러')
+
+    driver.get('https://www.steeldaily.co.kr/dbcenter/')
+    time.sleep(4)
+
+    content = driver.find_element_by_xpath('//*[@id="db-center-wrap"]/iframe')
+    driver.switch_to.frame(content)
+
+    if code == 'GI':
+        flag = 0
+    else:
+        flag = 1
+
+    print('[{}] 데이터 수집 시작 (code: {})'.format(start_time.strftime('%Y/%m/%d %H:%M:%S'), code))
+
+    while (True):
+        if flag == 0:
+            WebDriverWait(driver, 20).until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="page-main"]/div/div/div/div/div[1]/div[1]/ul/li[5]/a'))).click()
+            time.sleep(4)
+
+            # data=pd.read_html(driver.find_element(By.XPATH,'//*[@id="print-box"]/table').get_attribute('outerHTML'),header=0)[0]
+        else:
+            WebDriverWait(driver, 20).until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="page-main"]/div/div/div/div/div[1]/div[10]/ul/li[2]/a'))).click()
+            time.sleep(4)
+
+        data = pd.read_html(driver.find_element(By.XPATH, '//*[@id="print-box"]/table').get_attribute('outerHTML'), header=0)[0]
+
+        if page != 1:
+            try:
+                if data.iloc[-1, 0] == result[-1].iloc[-1, 0]:
+                    break
+            except:
+                break
+        result.append(data)
+        page += 1
+        time.sleep(delay)
+
+    price = pd.concat(result).reset_index(drop=True)
+    if flag == 0:
+        price.columns = ['DATE', 'PRICE', 'COMPARED']
+    else:
+        price.columns = ['DATE', 'PRICE', 'COMPARED', 'ETC']
+    price['PRICE'] = price['PRICE'].apply(lambda x: x[:5])
+    price['PRICE'] = price['PRICE'].apply(lambda x: re.sub(r"[^0-9]", "", x))
+    price['CODE'] = code
+    price = price[['DATE', 'CODE', 'PRICE']]
+
+    # 날짜 비교를 위한 new_date
+    new_date_data = price
+    new_date = data.iloc[0, 0]
+
+    # 머리글은 제외하고 기존 데이터 read
+    csv_data = pd.read_csv(code + '.csv', index_col=0, encoding='utf-8')
+    # 날짜 비교를 위한 기존 csv_max_date
+    csv_max_date = csv_data['DATE'].iloc[0]
+
+    if re.sub('[^0-9]', '', new_date) > re.sub('[^0-9]', '', csv_max_date):  # new_date 가 csv_max_date 보다 클 경우 병합
+        newData.append(new_date_data)  # 신규 데이터 list 형태로 만들어줌
+
+        price = pd.concat(newData)
+        result = pd.concat([price, csv_data]).reset_index(drop=True)  # 신규 + 기존 데이터 처리 후 index 초기화
+        print(result)
+    else:
+        result = csv_data
+        price = []
+        print(result)
+    end_time = datetime.now()
+    print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
+                                                                          (end_time - start_time).seconds,
+                                                                          len(price)))
+    return result
+
+    
