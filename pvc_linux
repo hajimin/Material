@@ -1,0 +1,153 @@
+
+import os
+import time
+import re
+import numpy as np
+import pandas as pd
+from datetime import datetime
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+
+def get_init_price(code):
+    start_time = datetime.now()
+    print('[{}] 데이터 수집 시작 (code: {})'.format(start_time.strftime('%Y/%m/%d %H:%M:%S'), code))
+    # driver = webdriver.Chrome(ChromeDriverManager().install())
+    path='/usr/bin/chromedriver'     # 구글 드라이버 설치 경로 지정
+
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+
+    driver = webdriver.Chrome(executable_path = path, chrome_options=chrome_options)
+    website = 'https://www.cischem.com/'
+    driver.get(website)
+    id = 'kccpd'
+    pw = 'qweasd'
+    # frame 접근
+    frame = driver.find_element(By.XPATH,'/html/frameset/frame')
+
+    driver.switch_to.frame(frame)
+    # 로그인
+    elem = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td/table/tbody/tr[1]/td/table/tbody/tr[4]/td/table/tbody/tr/td[1]/input[1]')
+    elem.send_keys(id)
+    elem = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td/table/tbody/tr[1]/td/table/tbody/tr[4]/td/table/tbody/tr/td[1]/input[2]')
+    elem.send_keys(pw)
+    elem.send_keys(Keys.RETURN)
+    time.sleep(2)
+    # 가격 정보 본문 전체보기 url
+
+    driver.get('https://www.cischem.com/classify/sub_2_content.asp?content=spot_price/item_price_list.asp&flag=all&select_name=PVC&nwe=&kr=&jp=&flag_print=&taiwan=&japan=')
+    time.sleep(3)
+    # 전체 중 table만 가져오기
+    data=pd.read_html(driver.find_element(By.XPATH, '/html/body/table[2]/tbody/tr/td[3]/table[2]/tbody/tr/td/table/tbody/tr/td/table[2]').get_attribute('outerHTML'), header=0)[0]
+    df = pd.DataFrame(data)
+
+    df['code'] = code
+
+    price = df[['Date', 'code', 'Korea(CFR)']]
+    # 인덱스 숨기기
+    # price.style.hide_index()
+    price.columns = ['DATE', 'CODE', 'Korea']
+    # price['MIN'] = price.Korea.str.split('-').str[0].astype('int')
+
+    price['MIN'] = price.Korea.str.split('-').str[0].astype('int')
+    price['MAX'] = price.Korea.str.split('-').str[1].astype('int')
+    # 평균
+    price['PRICE'] = ((price['MIN'] + price['MAX']) / 2).astype('int')
+    price = price[['CODE', 'DATE', 'PRICE']]
+    # 차분
+    price['COMPARED'] = price.PRICE.diff(-1)
+    end_time = datetime.now()
+    print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
+                                                                          (end_time - start_time).seconds,
+                                                                          len(price)))
+    # 매일 업데이트
+    return price
+
+def get_daily_price(code):
+    newData = []
+    start_time = datetime.now()
+    print('[{}] 데이터 수집 시작 (code: {})'.format(start_time.strftime('%Y/%m/%d %H:%M:%S'), code))
+    #driver = webdriver.Chrome(ChromeDriverManager().install())
+
+    path='/usr/bin/chromedriver'     # 구글 드라이버 설치 경로 지정
+
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+
+    driver = webdriver.Chrome(executable_path = path, chrome_options=chrome_options)
+
+    website = 'https://www.cischem.com/'
+    driver.get(website)
+    id = 'kccpd'
+    pw = 'qweasd'
+    # frame 접근
+    frame = driver.find_element(By.XPATH,'/html/frameset/frame')
+
+    driver.switch_to.frame(frame)
+
+
+    # 로그인
+    elem = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td/table/tbody/tr[1]/td/table/tbody/tr[4]/td/table/tbody/tr/td[1]/input[1]')
+    elem.send_keys(id)
+    elem = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td/table/tbody/tr[1]/td/table/tbody/tr[4]/td/table/tbody/tr/td[1]/input[2]')
+    elem.send_keys(pw)
+    elem.send_keys(Keys.RETURN)
+    time.sleep(2)
+    # 가격 정보 본문 전체보기 url
+    driver.get('https://www.cischem.com/classify/sub_2_content.asp?content=spot_price/item_price_list.asp&flag=all&select_name=PVC&nwe=&kr=&jp=&flag_print=&taiwan=&japan=')
+    time.sleep(4)
+    # 전체 중 table만 가져오기
+    data=pd.read_html(driver.find_element(By.XPATH, '/html/body/table[2]/tbody/tr/td[3]/table[2]/tbody/tr/td/table/tbody/tr/td/table[2]').get_attribute('outerHTML'), header=0)[0]
+    df = pd.DataFrame(data)
+
+    df = df.loc[[0]]
+    df['code'] = code
+
+    price = df[['Date', 'code', 'Korea(CFR)']]
+    # 인덱스 숨기기
+    # price.style.hide_index()
+
+    price.columns = ['DATE', 'CODE', 'Korea']
+    # price['MIN'] = price.Korea.str.split('-').str[0].astype('int')
+
+    price['MIN'] = price.Korea.str.split('-').str[0].astype('int')
+    price['MAX'] = price.Korea.str.split('-').str[1].astype('int')
+    # 평균
+    price['PRICE'] = ((price['MIN'] + price['MAX']) / 2).astype('int')
+    price = price[['CODE', 'DATE', 'PRICE']]
+    # 차분
+    price['COMPARED'] = 0
+    end_time = datetime.now()
+
+    # 날짜 비교를 위한 new_date
+    new_date_data = price
+    new_date = data.iloc[0, 0]
+
+
+    # 머리글은 제외하고 기존 데이터 read
+    csv_data = pd.read_csv(code + '.csv', index_col=0, encoding='utf-8')
+    # 날짜 비교를 위한 기존 csv_max_date
+    csv_max_date = csv_data.max()[1]
+
+    if re.sub('[^0-9]', '', new_date) > re.sub('[^0-9]', '', csv_max_date) :    # new_date 가 csv_max_date 보다 클 경우 병합
+        newData.append(new_date_data)                                           # 신규 데이터 list 형태로 만들어줌
+
+        price = pd.concat(newData)
+        result = pd.concat([price, csv_data]).reset_index(drop=True)  # 신규 + 기존 데이터 처리 후 index 초기화
+    else :
+        result = csv_data
+        price = []
+
+    print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
+                                                                          (end_time - start_time).seconds,
+                                                                          len(price)))
+    # 매일 업데이트
+    return result
