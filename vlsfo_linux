@@ -1,0 +1,193 @@
+import os
+import time
+import re
+from datetime import datetime as datetime2
+import datetime
+import numpy as np
+import pandas as pd
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+
+
+def get_init_price(code):
+    start_time = datetime2.now()
+    # 빈 데이터 프레임 생성
+    item=pd.DataFrame(columns=['idx', 'date1', 'date2','종가','전월대비','고점','저점','차이'])
+    # webdriver 자동 version 업데이트
+    # driver = webdriver.Chrome(ChromeDriverManager().install())
+    # driver = webdriver.Chrome(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+
+    path='/usr/bin/chromedriver'
+
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+
+    driver = webdriver.Chrome(executable_path=path,chrome_options=chrome_options)
+    # site open
+
+    website = 'https://www.marinevesseltraffic.com/2013/06/bunker-prices-singapore-rotterdam.html'
+    driver.get(website)
+    time.sleep(3)
+    # iframe 접근하려면 창 전환 필요
+
+    content = driver.find_element(By.XPATH,'/html/body/div[2]/div[2]/center/div/iframe')
+
+    driver.switch_to.frame(content)
+    # iframe 내 cilck
+    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="row-sg-sin-VLSFO"]/a'))).click()
+    time.sleep(20)
+    # element table에 접근 > tbody 접근
+    try :
+        xpath = driver.find_element(By.XPATH, '//*[@id="block_348"]')
+        tbody = xpath.find_element(By.XPATH, '//*[@id="_VLSFO"]/table/tbody')
+    except :
+        time.sleep(30)
+        xpath = driver.find_element(By.XPATH, '//*[@id="block_348"]')
+        tbody = xpath.find_element(By.XPATH, '//*[@id="_VLSFO"]/table/tbody')
+    # 테이블(tr, th, td) 값 가져오기
+    for tr in tbody.find_elements(By.TAG_NAME,"tr")[:11]:
+        txt = tr.find_element(By.TAG_NAME,"th").get_attribute("innerText")
+        for td in tr.find_elements(By.TAG_NAME,"td")[:5]:
+            txt += " " + td.get_attribute("innerText")
+        #txt 한 뭉텅이로 들어오기 때문에 split 사용(공백 기준)
+        df=pd.DataFrame(txt.split())
+        # 하나의 행으로 입력되어 행열전환
+        trans = np.transpose(df)
+        # columns명 지정
+        trans.columns = ['idx', 'date1', 'date2','price','compared','고점','저점','차이']
+        # 아까 앞에서 만든 빈 데이터 프레임에 append
+        # item= item.append(trans,ignore_index=True)
+        item = pd.concat([item, trans], ignore_index= True)
+        # item.to_excel('VLSFO_real.xlsx')
+
+    # 데이터 값이 Dec 22 이렇게 들어오기때문에
+    # 오늘 날짜 기준 년도 가져오기
+    date_year = datetime.date.today().year
+
+    # Dec 를 datetime으로 변경 후 월만 추출
+    # 2023-01-04 수정
+    item['year'] = int(date_year)
+    item['year'] = np.where(item['date1'] == 'Dec', item.year - 1, item.year)
+    item['date1'] = pd.to_datetime(item['date1'], format='%b')
+    item['date1'] = item['date1'].dt.month.astype(str)
+    # item['date1'] = str(item['date1']).split('-')[1]
+    item['code'] = 'VLSFO'
+
+    # 년 + 월 + 일 합쳐 문자열-> datetime 변경 (이때, 초단위까지 나오므로 문자열로 한번더 type변경)
+    item['date'] = item.year.astype(str) + '-' + item['date1'].astype(str) + '-' + item['date2'].astype(str)
+    # 2023-01-04 수정
+
+    item['date']=pd.to_datetime(item['date'], format='%Y-%m-%d')
+    # test 위해 date3으로 했는데, 그냥 date로 해도 무방하다고 생각됩니다
+    item['date3']=item['date'].dt.strftime('%Y-%m-%d').astype('str')
+    final = item[['date3', 'code', 'price', 'compared']]
+    final.columns = ['DATE', 'CODE', 'PRICE', 'COMPARED']
+    # import sqlalchemy
+    # engine = sqlalchemy.create_engine("oracle://EIS_ADMIN:kcc3480!@70.90.10.209:1558/DEV1")
+    # final.to_sql('PRICE_MATERIAL', con=engine, if_exists='append', chunksize=1000, index=False)
+    final.to_csv('VLSFO.csv', encoding='utf-8-sig')  # 저유황유 가격정보 to_csv
+
+    end_time = datetime2.now()
+    print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
+                                                                          (end_time - start_time).seconds,
+                                                                          len(final)))
+    return final
+
+
+def get_daily_price(code) :
+    start_time = datetime2.now()
+    newData =[]
+    # 빈 데이터 프레임 생성
+    item = pd.DataFrame(columns=['idx', 'date1', 'date2', '종가', '전월대비', '고점', '저점', '차이'])
+    # webdriver 자동 version 업데이트
+    # driver = webdriver.Chrome(ChromeDriverManager().install())
+
+    path='/usr/bin/chromedriver'     # 구글 드라이버 설치 경로 지정
+
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+
+    driver = webdriver.Chrome(executable_path = path, chrome_options=chrome_options)
+
+    # site open
+    website = 'https://www.marinevesseltraffic.com/2013/06/bunker-prices-singapore-rotterdam.html'
+    driver.get(website)
+    time.sleep(3)
+    # iframe 접근하려면 창 전환 필요
+
+    content = driver.find_element(By.XPATH, '/html/body/div[2]/div[2]/center/div/iframe')
+
+    driver.switch_to.frame(content)
+    # iframe 내 cilck
+    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="row-sg-sin-VLSFO"]/a'))).click()
+    time.sleep(20)
+    # element table에 접근 > tbody 접근
+    xpath = driver.find_element(By.XPATH, '//*[@id="block_348"]')
+    tbody = xpath.find_element(By.XPATH, '//*[@id="_VLSFO"]/table/tbody')
+    # 테이블(tr, th, td) 값 가져오기
+
+
+    for tr in tbody.find_elements(By.TAG_NAME, "tr")[:1]:
+        txt = tr.find_element(By.TAG_NAME, "th").get_attribute("innerText")
+        for td in tr.find_elements(By.TAG_NAME, "td")[:5]:
+            txt += " " + td.get_attribute("innerText")
+        # txt 한 뭉텅이로 들어오기 때문에 split 사용(공백 기준)
+        df = pd.DataFrame(txt.split())
+        # 하나의 행으로 입력되어 행열전환
+        trans = np.transpose(df)
+        # columns명 지정
+        trans.columns = ['idx', 'date1', 'date2', 'price', 'compared', '고점', '저점', '차이']
+        # 아까 앞에서 만든 빈 데이터 프레임에 append
+        # item= item.append(trans,ignore_index=True)
+        item = pd.concat([item, trans], ignore_index=True)
+        # item.to_excel('VLSFO_real.xlsx')
+
+    # 데이터 값이 Dec 22 이렇게 들어오기때문에
+    # 오늘 날짜 기준 년도 가져오기
+    date_year = datetime.date.today().year
+    item['year'] = int(date_year)
+    item['date1'] = pd.to_datetime(item['date1'], format='%b')
+    item['date1'] = item['date1'].dt.month.astype(str)
+    # item['date1'] = str(item['date1']).split('-')[1]
+    item['code'] = 'VLSFO'
+
+    # 년 + 월 + 일 합쳐 문자열-> datetime 변경 (이때, 초단위까지 나오므로 문자열로 한번더 type변경)
+    item['date'] = item.year.astype(str) + '-' + item['date1'].astype(str) + '-' + item['date2'].astype(str)
+    item['date'] = pd.to_datetime(item['date'], format='%Y-%m-%d')
+
+    item['date3'] = item['date'].dt.strftime('%Y-%m-%d').astype('str')
+    final = item[['date3', 'code', 'price', 'compared']]
+    final.columns = ['DATE', 'CODE', 'PRICE', 'COMPARED']
+
+    new_date_data = final
+    new_date = final.iloc[0, 0]
+
+    csv_data = pd.read_csv(code + '.csv', index_col=0, encoding='utf-8')
+    # 날짜 비교를 위한 기존 csv_max_date
+    csv_max_date = csv_data.max()[0]
+
+    if re.sub('[^0-9]', '', new_date) > re.sub('[^0-9]', '', csv_max_date):  # new_date 가 csv_max_date 보다 클 경우 병합
+        newData.append(new_date_data)  # 신규 데이터 list 형태로 만들어줌
+
+        price = pd.concat(newData)
+        result = pd.concat([price, csv_data]).reset_index(drop=True)  # 신규 + 기존 데이터 처리 후 index 초기화
+    else:
+        result = csv_data
+        price = []
+    # import sqlalchemy
+    # engine = sqlalchemy.create_engine("oracle://EIS_ADMIN:kcc3480!@70.90.10.209:1558/DEV1")
+    # final.to_sql('PRICE_MATERIAL', con=engine, if_exists='append', chunksize=1000, index=False)
+    result.to_csv('VLSFO.csv', encoding='utf-8-sig')  # 저유황유 가격정보 to_csv
+
+    end_time = datetime2.now()
+    print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
+                                                                          (end_time - start_time).seconds,
+                                                                          len(price)))
+    return result
