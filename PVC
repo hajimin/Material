@@ -73,15 +73,74 @@ def get_pvc(code):
     
     return price
 
-PVC_price = get_pvc('PVC')
 
+def get_daily_price(code):
+    newData = []
+    start_time = datetime.now()
+    print('[{}] 데이터 수집 시작 (code: {})'.format(start_time.strftime('%Y/%m/%d %H:%M:%S'), code))
+    driver = webdriver.Chrome(ChromeDriverManager().install())
 
-engine = sqlalchemy.create_engine("oracle://ID:PW@IP:PORT")
+    website = 'https://www.cischem.com/'
+    driver.get(website)
+    id = 'kccpd'
+    pw = 'qweasd'
 
-for i in range(len(PVC_price)):
-    try:
-        PVC_price.to_sql('TableName', con=engine, if_exists='append', chunksize=1000, index=False)
-    except:
-        pass
+    # frame 접근
+    frame = driver.find_element(By.XPATH,'/html/frameset/frame')
+
+    driver.switch_to.frame(frame)
+
+    # 로그인
+    elem = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td/table/tbody/tr[1]/td/table/tbody/tr[4]/td/table/tbody/tr/td[1]/input[1]')
+    elem.send_keys(id)
+    elem = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td/table/tbody/tr[1]/td/table/tbody/tr[4]/td/table/tbody/tr/td[1]/input[2]')
+    elem.send_keys(pw)
+    elem.send_keys(Keys.RETURN)
+    time.sleep(2)
     
-# 매일 실행 - 리눅스 
+    # 가격 정보 본문 전체보기 url
+    driver.get('https://www.cischem.com/classify/sub_2_content.asp?content=spot_price/item_price_list.asp&flag=all&select_name=PVC&nwe=&kr=&jp=&flag_print=&taiwan=&japan=')
+    time.sleep(4)
+    
+    # 전체 중 table만 가져오기
+    data=pd.read_html(driver.find_element(By.XPATH, '/html/body/table[2]/tbody/tr/td[3]/table[2]/tbody/tr/td/table/tbody/tr/td/table[2]').get_attribute('outerHTML'), header=0)[0]
+
+    # 날짜 비교를 위한 new_date
+    new_date_data = data.loc[1:]
+    new_date = data.iloc[0, 0]
+
+    # 머리글은 제외하고 기존 데이터 read
+    csv_data = pd.read_csv(code + '.csv', index_col=0, encoding='utf-8')
+    # 날짜 비교를 위한 기존 csv_max_date
+    csv_max_date = csv_data.max()[1]
+
+    if re.sub('[^0-9]', '', new_date) > re.sub('[^0-9]', '', csv_max_date):    # new_date 가 csv_max_date 보다 클 경우 병합
+        newData.append(new_date_data)                                           # 신규 데이터 list 형태로 만들어줌
+
+        price = pd.concat(newData).reset_index(drop=True)
+
+
+        price = price[['Date', 'Korea(CFR)']]
+
+        price.columns = ['DATE', 'Korea']
+        price['MIN'] = price.Korea.str.split('-').str[0].astype('int')
+        price['MAX'] = price.Korea.str.split('-').str[1].astype('int')
+        # 평균
+        price['PRICE'] = ((price['MIN'] + price['MAX']) / 2).astype('int')
+        price['CODE'] = code
+
+        price = price[[ 'DATE', 'CODE','PRICE']]
+        end_time = datetime.now()
+
+        result = pd.concat([price, csv_data]).reset_index(drop=True)  # 신규 + 기존 데이터 처리 후 index 초기화
+        result = result[['DATE', 'CODE', 'PRICE']]
+    else:
+        result = csv_data
+        result = result[[ 'DATE', 'CODE','PRICE']]
+
+    print('[{}] 데이터 수집을 종료합니다. (code: {}, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'), code,
+                                                                          (end_time - start_time).seconds,
+                                                                          len(price)))
+
+
+    return result
