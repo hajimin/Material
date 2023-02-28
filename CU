@@ -1,0 +1,89 @@
+import os
+import time
+import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.support.ui import Select
+from webdriver_manager.chrome import ChromeDriverManager
+
+os.chdir('C:/Commodity/test')
+
+def get_init_CUprice(code):
+    # 크롬 드라이버 실행 및 사이트 접속
+    driver = webdriver.Chrome(ChromeDriverManager().install())
+    driver.get("https://www.komis.or.kr/komis/price/mineralprice/basemetals/pricetrend/baseMetals.do")
+    # select box 선택
+    mc_seq = driver.find_element_by_xpath('//*[@id="mc_seq"]')
+    mc_seq.click()
+    mc_seq_option = Select(mc_seq)
+    mc_seq_option.select_by_index(1)
+    # 날짜 입력 후 검색버튼 클릭
+    from_ymd = driver.find_element_by_xpath('//*[@id="from_ymd"]')
+    from_ymd.clear()
+    from_ymd.send_keys('2013-01-01')
+    submit_button = driver.find_element_by_xpath('//*[@id="sub_data"]/div[2]/form/div[1]/div/input')
+    submit_button.click()
+    # 데이터 추출
+    table = driver.find_element_by_xpath('//*[@id="dataListTable"]')
+    df = pd.read_html(table.get_attribute('outerHTML'), header=1)[0]
+    # 1번째, 2번째 열만 가져오기
+    df = df.iloc[:, :2]
+    # # 1번째 열 이름을 "기준일자", 2번째 열 이름을 "기준금액"으로 설정
+    df = df.rename(columns={df.columns[0]: "DATE", df.columns[1]: "PRICE"})
+    # 기준일자 열 기준으로 내림차순으로 순서 변경
+    df = df.sort_values(by='DATE', ascending=False)
+    # 인덱스 리셋
+    df = df.reset_index(drop=True)
+    df['CODE'] = code
+    df.to_csv('CU.csv', encoding='utf-8-sig')
+    driver.quit()
+    print(df)
+
+def update_CUprice(code):
+    # 크롬 드라이버 실행 및 사이트 접속
+    driver = webdriver.Chrome(ChromeDriverManager().install())
+    driver.get("https://www.komis.or.kr/komis/price/mineralprice/basemetals/pricetrend/baseMetals.do")
+    # select box 선택
+    mc_seq = driver.find_element_by_xpath('//*[@id="mc_seq"]')
+    mc_seq.click()
+    mc_seq_option = Select(mc_seq)
+    mc_seq_option.select_by_index(1)
+    # 날짜 입력 후 검색버튼 클릭
+    from_ymd = driver.find_element_by_xpath('//*[@id="from_ymd"]')
+    from_ymd.clear()
+    from_ymd.send_keys('2013-01-01')
+    submit_button = driver.find_element_by_xpath('//*[@id="sub_data"]/div[2]/form/div[1]/div/input')
+    submit_button.click()
+    # 데이터 추출
+    table = driver.find_element_by_xpath('//*[@id="dataListTable"]')
+    df = pd.read_html(table.get_attribute('outerHTML'), header=1)[0]
+    # 1번째, 2번째 열만 가져오기
+    df = df.iloc[:, :2]
+    # # 1번째 열 이름을 "기준일자", 2번째 열 이름을 "기준금액"으로 설정
+    df = df.rename(columns={df.columns[0]: "DATE", df.columns[1]: "PRICE"})
+    # 기준일자 열 기준으로 내림차순으로 순서 변경
+    df = df.sort_values(by='DATE', ascending=False)
+    df = df.reset_index(drop=True)
+    # CSV 파일 로딩
+    try:
+        saved_df = pd.read_csv('CU.csv', encoding='utf-8-sig', index_col=0)
+    except FileNotFoundError:
+        saved_df = pd.DataFrame(columns=['DATE', 'PRICE'])
+    # 중복값 제거
+    saved_df = saved_df.drop_duplicates(keep='last')
+    # 새로운 데이터 추가
+    new_data = df[~df['DATE'].isin(saved_df['DATE'])]
+    new_data['CODE'] = code
+    print(new_data)
+    if not new_data.empty:
+        saved_df = pd.concat([saved_df, new_data], ignore_index=False)
+    # 인덱스 리셋
+    saved_df = saved_df.sort_values(by='DATE', ascending=False)
+    saved_df = saved_df.reset_index(drop=True)
+
+    # 저장된 데이터 다시 저장
+    saved_df.to_csv('CU.csv', encoding='utf-8-sig')
+    # 드라이버 종료
+    driver.quit()
+
+# get_init_CUprice('CU')
+update_CUprice('CU')
