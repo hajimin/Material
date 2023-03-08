@@ -1,0 +1,54 @@
+import os
+import pandas as pd
+from datetime import datetime
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.keys import Keys
+import time
+from datetime import datetime
+
+os.chdir('C:/Commodity/test')
+
+def get_price():
+    result = []
+
+    driver = webdriver.Chrome(ChromeDriverManager().install())
+
+    start_time = datetime.now()
+    print('[{}] 데이터 수집 시작 (code: gas)'.format(start_time.strftime('%Y/%m/%d %H:%M:%S')))
+
+    website = 'https://kr.investing.com/commodities/natural-gas-historical-data'
+    driver.get(website)
+    time.sleep(3)
+
+    main = driver.find_element_by_xpath('//*[@id="__next"]/div[2]/div/div/div[2]/main')
+    e = main.find_element_by_xpath('//*[@id="__next"]/div[2]/div/div/div[2]/main/div/div[4]/div/div/div[2]/div[2]/div[2]/div[1]')
+    e.click()
+    elem = e.find_element_by_xpath('//*[@id="__next"]/div[2]/div/div/div[2]/main/div/div[4]/div/div/div[2]/div[2]/div[2]/div[2]/div[1]/div/div[1]/input')
+    elem.clear()
+    time.sleep(3)
+
+    elem.send_keys('2019-01-01')
+    elem.send_keys(Keys.RETURN)
+    time.sleep(3)
+
+    btn = driver.find_element_by_xpath('//*[@id="__next"]/div[2]/div/div/div[2]/main/div/div[4]/div/div/div[2]/div[2]/div[2]/div[2]/div[2]/button').click()
+    time.sleep(3)
+
+    table = driver.find_element_by_xpath('//*[@id="__next"]/div/div/div/div[2]/main/div/div[4]/div/div/div[3]/div/table')
+    tbody = table.find_element_by_tag_name("tbody")
+
+    for tr in tbody.find_elements_by_tag_name("tr"):
+        result.append(tr.get_attribute("innerText"))
+    df = pd.DataFrame(result, columns=['date'])
+    price = pd.DataFrame(df['date'].str.split('\t').tolist(), columns=['std_date', 'price', 'open', 'high', 'low', 'amt', 'change'])
+    print(price)
+
+    end_time = datetime.now()
+    print('[{}] 데이터 수집을 종료합니다. (code: gas, 수집시간: {}초, 데이터수: {:,}개)'.format(end_time.strftime('%Y/%m/%d %H:%M:%S'),
+                                                                          (end_time - start_time).seconds,
+                                                                          len(price)))
+    return price
+
+get_price()
+
